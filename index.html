@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Copy Dashboard</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; background: #121212; color: #fff; max-width: 500px; margin: 0 auto; }
+        h2 { text-align: center; color: #e0e0e0; margin-bottom: 20px; }
+        .form-section { background: #1e1e1e; padding: 15px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #333; }
+        input, textarea { width: 100%; padding: 10px; margin: 8px 0; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        textarea { height: 80px; resize: vertical; }
+        .action-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
+        .add-btn { background: #238636; color: white; }
+        .add-btn:active { background: #2ea043; }
+        .list-title { font-size: 18px; margin-bottom: 10px; color: #aaa; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .item-container { display: flex; align-items: stretch; margin: 12px 0; background: #1e1e1e; border: 1px solid #333; border-radius: 12px; overflow: hidden; }
+        .copy-btn { flex-grow: 1; padding: 18px; background: none; color: #e0e0e0; border: none; text-align: left; font-size: 16px; cursor: pointer; font-weight: 500; }
+        .copy-btn:active { background: #2a2a2a; }
+        .edit-btn { background: #333; border: none; color: #ff9800; width: 50px; cursor: pointer; font-size: 16px; border-left: 1px solid #444; }
+        .delete-btn { background: #333; border: none; color: #f44336; width: 50px; cursor: pointer; font-size: 16px; border-left: 1px solid #444; }
+        .edit-btn:active, .delete-btn:active { background: #444; }
+        .toast { display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4caf50; color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <h2>📋 Copy Dashboard</h2>
+
+    <div class="form-section">
+        <b id="form-mode-title">➕ Add New Button</b>
+        <input type="hidden" id="edit-index">
+        <input type="text" id="btn-label" placeholder="Button Label (e.g., My Address)">
+        <textarea id="btn-text" placeholder="Paste the long text here..."></textarea>
+        <button id="submit-btn" class="action-btn add-btn" onclick="saveButton()">Save Button</button>
+        <button id="cancel-btn" class="action-btn hidden" onclick="resetForm()" style="background:#555; color:white; margin-top:5px;">Cancel</button>
+    </div>
+
+    <div class="list-title">Your Custom Buttons</div>
+    <div id="buttons-list"></div>
+
+    <div id="toast" class="toast">Copied!</div>
+
+    <script>
+        let buttons = JSON.parse(localStorage.getItem('copyButtons')) || [];
+
+        function renderButtons() {
+            const list = document.getElementById('buttons-list');
+            list.innerHTML = buttons.length === 0 ? '<p style="color:#666; text-align:center;">No buttons added yet.</p>' : '';
+            
+            buttons.forEach((btn, index) => {
+                const container = document.createElement('div');
+                container.className = 'item-container';
+                container.innerHTML = `
+                    <button class="copy-btn" onclick="copyText(${index})">⚡ ${escapeHtml(btn.label)}</button>
+                    <button class="edit-btn" onclick="startEdit(${index})">✏️</button>
+                    <button class="delete-btn" onclick="deleteButton(${index})">🗑️</button>
+                `;
+                list.appendChild(container);
+            });
+        }
+
+        function saveButton() {
+            const label = document.getElementById('btn-label').value.trim();
+            const text = document.getElementById('btn-text').value.trim();
+            const editIndex = document.getElementById('edit-index').value;
+
+            if (!label || !text) return alert('Please fill in both fields!');
+
+            if (editIndex === "") {
+                buttons.push({ label, text });
+            } else {
+                buttons[editIndex] = { label, text };
+            }
+
+            localStorage.setItem('copyButtons', JSON.stringify(buttons));
+            resetForm();
+            renderButtons();
+        }
+
+        function startEdit(index) {
+            document.getElementById('form-mode-title').innerText = "✏️ Edit Button";
+            document.getElementById('btn-label').value = buttons[index].label;
+            document.getElementById('btn-text').value = buttons[index].text;
+            document.getElementById('edit-index').value = index;
+            document.getElementById('cancel-btn').classList.remove('hidden');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteButton(index) {
+            if (confirm("Delete this button permanently?")) {
+                buttons.splice(index, 1);
+                localStorage.setItem('copyButtons', JSON.stringify(buttons));
+                renderButtons();
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('form-mode-title').innerText = "➕ Add New Button";
+            document.getElementById('btn-label').value = '';
+            document.getElementById('btn-text').value = '';
+            document.getElementById('edit-index').value = '';
+            document.getElementById('cancel-btn').classList.add('hidden');
+        }
+
+        function copyText(index) {
+            navigator.clipboard.writeText(buttons[index].text).then(() => {
+                const toast = document.getElementById('toast');
+                toast.style.display = 'block';
+                setTimeout(() => { toast.style.display = 'none'; }, 1500);
+            });
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        renderButtons();
+    </script>
+</body>
+</html>
