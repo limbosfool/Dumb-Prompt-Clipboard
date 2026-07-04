@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Personal Copy Board</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; background: #121212; color: #fff; max-width: 500px; margin: 0 auto; }
+        h2 { text-align: center; margin-bottom: 25px; color: #e0e0e0; }
+        .btn { display: block; width: 100%; padding: 18px; margin: 12px 0; background: #1e1e1e; color: #e0e0e0; border: 1px solid #333; border-radius: 12px; font-size: 16px; text-align: left; cursor: pointer; transition: background 0.2s; }
+        .btn:active { background: #333; }
+        .toast { display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4caf50; color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    </style>
+</head>
+<body>
+
+    <h2>Dumb Prompt Clipboard</h2>
+
+    <!-- EDIT BELOW: Change 'Button Label' to whatever you want. Paste your long text inside the single quotes of copyText('') -->
+    <button class="btn" onclick="copyText('Paste your first long text block here...')">✏️ Button Label 1</button>
+    <button class="btn" onclick="copyText('Paste your second long text block here...')">✏️ Button Label 2</button>
+    <button class="btn" onclick="copyText('Paste your third long text block here...')">✏️ Button Label 3</button>
+    <!-- You can copy and paste the line above to add as many buttons as you want! -->
+
+    <div id="toast" class="toast">Copied!</div>
+
+    <script>
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const toast = document.getElementById('toast');
+                toast.style.display = 'block';
+                setTimeout(() => { toast.style.display = 'none'; }, 1500);
+            });
+        }
+    </script>
+</body>
+</html>
