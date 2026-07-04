@@ -3,176 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Cloud Copy Dashboard</title>
+    <title>My Personal Copy Board</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; background: #121212; color: #fff; max-width: 500px; margin: 0 auto; }
         h2 { text-align: center; color: #e0e0e0; margin-bottom: 20px; }
-        .form-section { background: #1e1e1e; padding: 15px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #333; }
-        input, textarea { width: 100%; padding: 10px; margin: 8px 0; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        textarea { height: 80px; resize: vertical; }
-        .action-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
-        .add-btn { background: #238636; color: white; }
-        .add-btn:active { background: #2ea043; }
         .status-msg { text-align: center; color: #888; font-size: 14px; margin-bottom: 15px; }
         .list-title { font-size: 18px; margin-bottom: 10px; color: #aaa; border-bottom: 1px solid #333; padding-bottom: 5px; }
         .item-container { display: flex; align-items: stretch; margin: 12px 0; background: #1e1e1e; border: 1px solid #333; border-radius: 12px; overflow: hidden; }
-        .copy-btn { flex-grow: 1; padding: 18px; background: none; color: #e0e0e0; border: none; text-align: left; font-size: 16px; cursor: pointer; font-weight: 500; }
+        .copy-btn { flex-grow: 1; padding: 18px; background: none; color: #e0e0e0; border: none; text-align: left; font-size: 16px; cursor: pointer; font-weight: 500; width: 100%; }
         .copy-btn:active { background: #2a2a2a; }
-        .edit-btn { background: #333; border: none; color: #ff9800; width: 50px; cursor: pointer; font-size: 16px; border-left: 1px solid #444; }
-        .delete-btn { background: #333; border: none; color: #f44336; width: 50px; cursor: pointer; font-size: 16px; border-left: 1px solid #444; }
         .toast { display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4caf50; color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <h2>☁️ Alphabetical Cloud Board</h2>
-
-    <div class="form-section">
-        <b id="form-mode-title">➕ Add New Button</b>
-        <input type="hidden" id="edit-id">
-        <input type="text" id="btn-label" placeholder="Button Label (e.g., My Address)">
-        <textarea id="btn-text" placeholder="Paste the long text here..."></textarea>
-        <button id="submit-btn" class="action-btn add-btn" onclick="saveButton()">Save Button</button>
-        <button id="cancel-btn" class="action-btn hidden" onclick="resetForm()" style="background:#555; color:white; margin-top:5px;">Cancel</button>
-    </div>
-
-    <div id="status" class="status-msg">Loading data from cloud...</div>
+    <h2>📋 My Copy Board</h2>
+    <div id="status" class="status-msg">Loading buttons from list.txt...</div>
+    
     <div class="list-title">Your Custom Buttons (A-Z)</div>
     <div id="buttons-list"></div>
 
     <div id="toast" class="toast">Copied!</div>
 
     <script>
-        const BUCKET_ID = '8T8ud1ySwMkTzFF6BSisd1';
-        const API_URL = `https://kvdb.io{BUCKET_ID}/list.json`;
-
-        let buttons = [];
-
-        async function loadButtons() {
+        async function fetchAndRender() {
             try {
-                const response = await fetch(API_URL);
-                if (response.status === 200) {
-                    buttons = await response.json();
-                } else {
-                    buttons = [];
-                }
-                document.getElementById('status').innerText = "☁️ Synchronised with cloud";
-            } catch (err) {
-                document.getElementById('status').innerText = "❌ Offline mode (using backup)";
-                buttons = JSON.parse(localStorage.getItem('copyButtonsBackup')) || [];
-            }
-            renderButtons();
-        }
+                // Fetch the list.txt file directly from your GitHub directory
+                const response = await fetch('list.txt?t=' + new Date().getTime());
+                if (!response.ok) throw new Error("Could not find list.txt");
+                
+                const rawText = await response.text();
+                const lines = rawText.split('\n');
+                let buttons = [];
 
-        function renderButtons() {
-            const list = document.getElementById('buttons-list');
-            list.innerHTML = '';
-
-            if (buttons.length === 0) {
-                list.innerHTML = '<p style="color:#666; text-align:center;">No buttons added yet.</p>';
-                return;
-            }
-
-            buttons.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
-
-            buttons.forEach((btn) => {
-                const container = document.createElement('div');
-                container.className = 'item-container';
-                const safeId = encodeURIComponent(btn.label);
-
-                container.innerHTML = `
-                    <button class="copy-btn" onclick="copyText('${safeId}')">⚡ ${escapeHtml(btn.label)}</button>
-                    <button class="edit-btn" onclick="startEdit('${safeId}')">✏️</button>
-                    <button class="delete-btn" onclick="deleteButton('${safeId}')">🗑️</button>
-                `;
-                list.appendChild(container);
-            });
-        }
-
-        async function syncToCloud() {
-            document.getElementById('status').innerText = "⏳ Saving changes...";
-            localStorage.setItem('copyButtonsBackup', JSON.stringify(buttons));
-            try {
-                await fetch(API_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(buttons)
+                lines.forEach(line => {
+                    if (line.includes('|')) {
+                        const parts = line.split('|');
+                        const label = parts[0].trim();
+                        const text = parts.slice(1).join('|').trim();
+                        if (label && text) {
+                            buttons.push({ label, text });
+                        }
+                    }
                 });
-                document.getElementById('status').innerText = "☁️ Saved to cloud!";
+
+                // Always enforce automatic A-Z alphabetical sorting
+                buttons.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
+
+                const listDiv = document.getElementById('buttons-list');
+                listDiv.innerHTML = buttons.length === 0 ? '<p style="color:#666; text-align:center;">No buttons found in list.txt.</p>' : '';
+
+                buttons.forEach((btn, index) => {
+                    const container = document.createElement('div');
+                    container.className = 'item-container';
+                    container.innerHTML = `<button class="copy-btn" id="btn-${index}">⚡ ${escapeHtml(btn.label)}</button>`;
+                    listDiv.appendChild(container);
+
+                    // Setup click action
+                    document.getElementById(`btn-${index}`).addEventListener('click', () => {
+                        navigator.clipboard.writeText(btn.text).then(() => {
+                            const toast = document.getElementById('toast');
+                            toast.style.display = 'block';
+                            setTimeout(() => { toast.style.display = 'none'; }, 1500);
+                        });
+                    });
+                });
+
+                document.getElementById('status').innerText = "✅ Buttons loaded successfully";
             } catch (err) {
-                document.getElementById('status').innerText = "⚠️ Saved locally, cloud sync failed.";
+                document.getElementById('status').innerText = "❌ Error: Make sure list.txt exists on GitHub.";
             }
-        }
-
-        async function saveButton() {
-            const label = document.getElementById('btn-label').value.trim();
-            const text = document.getElementById('btn-text').value.trim();
-            const editId = document.getElementById('edit-id').value;
-
-            if (!label || !text) return alert('Please fill in both fields!');
-
-            if (editId === "") {
-                const exists = buttons.some(b => b.label.toLowerCase() === label.toLowerCase());
-                if (exists) return alert('A button with this label already exists!');
-                buttons.push({ label, text });
-            } else {
-                const originalLabel = decodeURIComponent(editId);
-                const index = buttons.findIndex(b => b.label === originalLabel);
-                if (index !== -1) buttons[index] = { label, text };
-            }
-
-            resetForm();
-            renderButtons();
-            await syncToCloud();
-        }
-
-        function startEdit(safeId) {
-            const targetLabel = decodeURIComponent(safeId);
-            const item = buttons.find(b => b.label === targetLabel);
-            if (!item) return;
-
-            document.getElementById('form-mode-title').innerText = "✏️ Edit Button";
-            document.getElementById('btn-label').value = item.label;
-            document.getElementById('btn-text').value = item.text;
-            document.getElementById('edit-id').value = safeId;
-            document.getElementById('cancel-btn').classList.remove('hidden');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        async function deleteButton(safeId) {
-            const targetLabel = decodeURIComponent(safeId);
-            if (confirm(`Delete "${targetLabel}" permanently?`)) {
-                buttons = buttons.filter(b => b.label !== targetLabel);
-                renderButtons();
-                await syncToCloud();
-            }
-        }
-
-        function resetForm() {
-            document.getElementById('form-mode-title').innerText = "➕ Add New Button";
-            document.getElementById('btn-label').value = '';
-            document.getElementById('btn-text').value = '';
-            document.getElementById('edit-id').value = '';
-            document.getElementById('cancel-btn').classList.add('hidden');
-        }
-
-        function copyText(safeId) {
-            const targetLabel = decodeURIComponent(safeId);
-            const item = buttons.find(b => b.label === targetLabel);
-            if (!item) return;
-
-            navigator.clipboard.writeText(item.text).then(() => {
-                const toast = document.getElementById('toast');
-                toast.style.display = 'block';
-                setTimeout(() => { toast.style.display = 'none'; }, 1500);
-            });
         }
 
         function escapeHtml(text) {
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        loadButtons();
+        fetchAndRender();
     </script>
 </body>
 </html>
