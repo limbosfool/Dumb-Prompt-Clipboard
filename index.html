@@ -202,3 +202,4 @@
             const item = buttons.find(b => b.label === targetLabel);
             if (!item) return;
 
+navigator.clipboard.writeText(item.text).then(() => {const toast = document.getElementById('toast');toast.style.display = 'block';setTimeout(() => { toast.style.display = 'none'; }, 1500);});}function escapeHtml(text) {return text.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, """).replace(/'/g, "'");}loadButtons();
