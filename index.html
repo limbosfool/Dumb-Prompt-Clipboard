@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Cloud Copy Dashboard</title>
+    <title>My Personal Copy Board</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; background: #121212; color: #fff; max-width: 500px; margin: 0 auto; }
         h2 { text-align: center; color: #e0e0e0; margin-bottom: 20px; }
@@ -13,7 +13,6 @@
         .action-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
         .add-btn { background: #238636; color: white; }
         .add-btn:active { background: #2ea043; }
-        .status-msg { text-align: center; color: #888; font-size: 14px; margin-bottom: 15px; }
         .list-title { font-size: 18px; margin-bottom: 10px; color: #aaa; border-bottom: 1px solid #333; padding-bottom: 5px; }
         .item-container { display: flex; align-items: stretch; margin: 12px 0; background: #1e1e1e; border: 1px solid #333; border-radius: 12px; overflow: hidden; }
         .copy-btn { flex-grow: 1; padding: 18px; background: none; color: #e0e0e0; border: none; text-align: left; font-size: 16px; cursor: pointer; font-weight: 500; }
@@ -22,11 +21,13 @@
         .delete-btn { background: #333; border: none; color: #f44336; width: 50px; cursor: pointer; font-size: 16px; border-left: 1px solid #444; }
         .toast { display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4caf50; color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .hidden { display: none; }
+        .sync-box { background: #1e1e1e; padding: 15px; border-radius: 12px; margin-top: 30px; border: 1px solid #333; }
+        .sync-input { font-size: 12px; font-family: monospace; background: #000; border: 1px solid #333; padding: 8px; color: #888; }
     </style>
 </head>
 <body>
 
-    <h2>☁️ Cloud Copy Board</h2>
+    <h2>📋 Personal Copy Board</h2>
 
     <div class="form-section">
         <b id="form-mode-title">➕ Add New Button</b>
@@ -37,46 +38,36 @@
         <button id="cancel-btn" class="action-btn hidden" onclick="resetForm()" style="background:#555; color:white; margin-top:5px;">Cancel</button>
     </div>
 
-    <div id="status" class="status-msg">Loading data from cloud database...</div>
     <div class="list-title">Your Custom Buttons (A-Z)</div>
     <div id="buttons-list"></div>
+
+    <!-- The direct cross-device synchronization engine -->
+    <div class="sync-box">
+        <b style="color: #aaa;">📲 Phone & Computer Link</b>
+        <p style="font-size: 12px; color: #666; margin: 5px 0 10px 0;">To sync devices, copy the text below and paste it into the sync box on your other device, then click Import.</p>
+        <textarea id="sync-data" class="sync-input" placeholder="Paste sync text here to import..."></textarea>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <button class="action-btn" onclick="copySyncString()" style="background: #007bff; color: white; flex: 1; padding: 8px;">📋 Copy Sync Text</button>
+            <button class="action-btn" onclick="importSyncString()" style="background: #333; color: #e0e0e0; flex: 1; padding: 8px; border: 1px solid #444;">📥 Import</button>
+        </div>
+    </div>
 
     <div id="toast" class="toast">Copied!</div>
 
     <script>
-        // PASTE YOUR EXTRACTED KVDB STRING DIRECTLY BETWEEN THE SINGLE QUOTES BELOW
-        const BUCKET_ID = '99T6VHq4iXZwKvkBfQsWei';
-        const API_URL = `https://kvdb.io{BUCKET_ID}/list.json`;
-
-        let buttons = [];
-
-        async function loadButtons() {
-            try {
-                const response = await fetch(API_URL);
-                if (response.status === 200) {
-                    buttons = await response.json();
-                    if (!Array.isArray(buttons)) buttons = [];
-                } else {
-                    buttons = [];
-                }
-                document.getElementById('status').innerText = "☁️ Synchronised with cloud";
-            } catch (err) {
-                document.getElementById('status').innerText = "❌ Offline mode (using backup)";
-                buttons = JSON.parse(localStorage.getItem('copyButtonsBackup')) || [];
-            }
-            renderButtons();
-        }
-
+        let buttons = JSON.parse(localStorage.getItem('myFixedClipboardList')) || [];
         function renderButtons() {
+            buttons.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
+            localStorage.setItem('myFixedClipboardList', JSON.stringify(buttons));
+
             const list = document.getElementById('buttons-list');
             list.innerHTML = '';
 
             if (buttons.length === 0) {
                 list.innerHTML = '<p style="color:#666; text-align:center;">No buttons added yet.</p>';
+                document.getElementById('sync-data').value = '';
                 return;
             }
-
-            buttons.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
 
             buttons.forEach((btn) => {
                 const container = document.createElement('div');
@@ -90,24 +81,12 @@
                 `;
                 list.appendChild(container);
             });
-        }
-        async function syncToCloud() {
-            document.getElementById('status').innerText = "⏳ Saving changes...";
-            localStorage.setItem('copyButtonsBackup', JSON.stringify(buttons));
-            try {
-                // Forcing plain text over a POST request drops all browser security blocks completely
-                await fetch(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify(buttons)
-                });
-                document.getElementById('status').innerText = "☁️ Saved to cloud database!";
-            } catch (err) {
-                document.getElementById('status').innerText = "⚠️ Saved locally, cloud sync failed.";
-            }
+            
+            // Encode data array cleanly into text string
+            document.getElementById('sync-data').value = btoa(encodeURIComponent(JSON.stringify(buttons)));
         }
 
-        async function saveButton() {
+        function saveButton() {
             const label = document.getElementById('btn-label').value.trim();
             const text = document.getElementById('btn-text').value.trim();
             const editId = document.getElementById('edit-id').value;
@@ -126,7 +105,34 @@
 
             resetForm();
             renderButtons();
-            await syncToCloud();
+        }
+
+        function copySyncString() {
+            const el = document.getElementById('sync-data');
+            if (!el.value) return alert('Add some buttons first before copying sync data!');
+            el.select();
+            document.execCommand('copy');
+            alert('Sync data copied! Paste this code into your other device and click Import.');
+        }
+
+        function importSyncString() {
+            const el = document.getElementById('sync-data').value.trim();
+            if (!el) return alert('Please paste the sync text from your other device first!');
+            
+            try {
+                const decoded = JSON.parse(decodeURIComponent(atob(el)));
+                if (Array.isArray(decoded)) {
+                    if (confirm('Importing will override your current list. Continue?')) {
+                        buttons = decoded;
+                        renderButtons();
+                        alert('Sync successful! Your board has updated.');
+                    }
+                } else {
+                    throw new Error();
+                }
+            } catch (e) {
+                alert('Invalid sync code. Make sure you copied the entire line of text!');
+            }
         }
 
         function startEdit(safeId) {
@@ -147,7 +153,6 @@
             if (confirm(`Delete "${targetLabel}" permanently?`)) {
                 buttons = buttons.filter(b => b.label !== targetLabel);
                 renderButtons();
-                await syncToCloud();
             }
         }
 
@@ -175,7 +180,7 @@
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        loadButtons();
+        renderButtons();
     </script>
 </body>
 </html>
