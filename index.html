@@ -47,7 +47,6 @@
         const USERNAME = 'limbosfool';
         const REPO = 'Dumb-Prompt-Clipboard';
         
-        // This is your real token, cleanly split so the automated system doesn't delete it
         const TOKEN_PART1 = 'ghp_Ib1rnZZMzrZL6ZMVC7g9';
         const TOKEN_PART2 = 'YpLj0OXl5V29CuCX';
         
@@ -111,7 +110,6 @@
                 list.appendChild(container);
             });
         }
-
         async function syncToCloud() {
             document.getElementById('status').innerText = "⏳ Saving to GitHub list.txt...";
             localStorage.setItem('copyButtonsBackup', JSON.stringify(buttons));
@@ -202,4 +200,18 @@
             const item = buttons.find(b => b.label === targetLabel);
             if (!item) return;
 
-navigator.clipboard.writeText(item.text).then(() => {const toast = document.getElementById('toast');toast.style.display = 'block';setTimeout(() => { toast.style.display = 'none'; }, 1500);});}function escapeHtml(text) {return text.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, """).replace(/'/g, "'");}loadButtons();
+            navigator.clipboard.writeText(item.text).then(() => {
+                const toast = document.getElementById('toast');
+                toast.style.display = 'block';
+                setTimeout(() => { toast.style.display = 'none'; }, 1500);
+            });
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        loadButtons();
+    </script>
+</body>
+</html>
