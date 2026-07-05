@@ -44,8 +44,9 @@
     <div id="toast" class="toast">Copied!</div>
 
     <script>
-        // REPLACE THIS URL LINK WITH YOUR COPIED NPOINT LINK
-        const API_URL = 'https://www.npoint.io/docs/7b8e68e2dc58d7b4f43e';
+        // PASTE YOUR KVDB KEY STRING BETWEEN THE QUOTES BELOW
+        const BUCKET_ID = '99T6VHq4iXZwKvkBfQsWei';
+        const API_URL = `https://kvdb.io{BUCKET_ID}/list.json`;
 
         let buttons = [];
 
@@ -96,7 +97,6 @@
             try {
                 await fetch(API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(buttons)
                 });
                 document.getElementById('status').innerText = "☁️ Saved to cloud database!";
