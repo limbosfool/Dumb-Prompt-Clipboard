@@ -116,12 +116,13 @@
             const base64Content = btoa(unescape(encodeURIComponent(rawText)));
 
             try {
-                const response = await fetch(API_URL, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `token ${TOKEN}`,
-                        'Content-Type': 'application/json'
-                    },
+         const response = await fetch(API_URL, {
+    method: 'PUT',
+    headers: {
+        'Authorization': `token ${TOKEN}`,
+        'Content-Type': 'application/json'
+    },
+
                     body: JSON.stringify({
                         message: "Updated copy board items via dashboard app",
                         content: base64Content,
