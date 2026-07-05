@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Personal Copy Dashboard</title>
+    <title>My Cloud Copy Dashboard</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; background: #121212; color: #fff; max-width: 500px; margin: 0 auto; }
         h2 { text-align: center; color: #e0e0e0; margin-bottom: 20px; }
@@ -13,6 +13,7 @@
         .action-btn { width: 100%; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
         .add-btn { background: #238636; color: white; }
         .add-btn:active { background: #2ea043; }
+        .status-msg { text-align: center; color: #888; font-size: 14px; margin-bottom: 15px; }
         .list-title { font-size: 18px; margin-bottom: 10px; color: #aaa; border-bottom: 1px solid #333; padding-bottom: 5px; }
         .item-container { display: flex; align-items: stretch; margin: 12px 0; background: #1e1e1e; border: 1px solid #333; border-radius: 12px; overflow: hidden; }
         .copy-btn { flex-grow: 1; padding: 18px; background: none; color: #e0e0e0; border: none; text-align: left; font-size: 16px; cursor: pointer; font-weight: 500; }
@@ -21,12 +22,11 @@
         .delete-btn { background: #333; border: none; color: #f44336; width: 50px; cursor: pointer; font-size: 16px; border-left: 1px solid #444; }
         .toast { display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: #4caf50; color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; z-index: 100; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
         .hidden { display: none; }
-        .sync-box { background: #111; padding: 10px; border-radius: 8px; font-size: 11px; margin-top: 20px; color: #777; border: 1px dashed #333; }
     </style>
 </head>
 <body>
 
-    <h2>📋 Personal Copy Board</h2>
+    <h2>☁️ Cloud Copy Board</h2>
 
     <div class="form-section">
         <b id="form-mode-title">➕ Add New Button</b>
@@ -37,34 +37,36 @@
         <button id="cancel-btn" class="action-btn hidden" onclick="resetForm()" style="background:#555; color:white; margin-top:5px;">Cancel</button>
     </div>
 
+    <div id="status" class="status-msg">Loading data from cloud database...</div>
     <div class="list-title">Your Custom Buttons (A-Z)</div>
     <div id="buttons-list"></div>
-
-    <div class="sync-box">
-        <b>📲 Cross-Device Transfer String</b><br>
-        To copy your list to your phone, click this box, copy the whole text line, open the link on your phone, paste it into the form text block, and name the label "IMPORT".
-        <input type="text" id="export-string" readonly onclick="this.select(); document.execCommand('copy'); alert('Transfer code copied to clipboard!');" style="font-size:10px; color:#555; background:#000; border:1px solid #222;">
-    </div>
 
     <div id="toast" class="toast">Copied!</div>
 
     <script>
-        // ADD YOUR PERMANENT CODES HERE SO THEY LOAD ON EVERY DEVICE AUTOMATICALLY
-        let defaultButtons = [
-            { label: "Home Address", text: "123 Fake Street, Auckland, New Zealand" },
-            { label: "My Email Address", text: "limbosfool@gmail.com" }
-        ];
+        // REPLACE THIS URL LINK WITH YOUR COPIED NPOINT LINK
+        const API_URL = 'https://www.npoint.io/docs/7b8e68e2dc58d7b4f43e';
 
-        let buttons = JSON.parse(localStorage.getItem('myFixedButtons')) || defaultButtons;
+        let buttons = [];
 
-                function renderButtons() {
-            // Remove imports from displaying visually
-            buttons = buttons.filter(b => b.label !== "IMPORT");
-            
-            // Enforce perfect A-Z sorting
-            buttons.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
-            localStorage.setItem('myFixedButtons', JSON.stringify(buttons));
+        async function loadButtons() {
+            try {
+                const response = await fetch(API_URL);
+                if (response.status === 200) {
+                    buttons = await response.json();
+                    if (!Array.isArray(buttons)) buttons = [];
+                } else {
+                    buttons = [];
+                }
+                document.getElementById('status').innerText = "☁️ Synchronised with cloud";
+            } catch (err) {
+                document.getElementById('status').innerText = "❌ Offline mode (using backup)";
+                buttons = JSON.parse(localStorage.getItem('copyButtonsBackup')) || [];
+            }
+            renderButtons();
+        }
 
+        function renderButtons() {
             const list = document.getElementById('buttons-list');
             list.innerHTML = '';
 
@@ -72,6 +74,8 @@
                 list.innerHTML = '<p style="color:#666; text-align:center;">No buttons added yet.</p>';
                 return;
             }
+
+            buttons.sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base', numeric: true }));
 
             buttons.forEach((btn) => {
                 const container = document.createElement('div');
@@ -85,32 +89,28 @@
                 `;
                 list.appendChild(container);
             });
-            
-            // Generate cross-device data block string
-            document.getElementById('export-string').value = btoa(encodeURIComponent(JSON.stringify(buttons)));
+        }
+        async function syncToCloud() {
+            document.getElementById('status').innerText = "⏳ Saving changes...";
+            localStorage.setItem('copyButtonsBackup', JSON.stringify(buttons));
+            try {
+                await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(buttons)
+                });
+                document.getElementById('status').innerText = "☁️ Saved to cloud database!";
+            } catch (err) {
+                document.getElementById('status').innerText = "⚠️ Saved locally, cloud sync failed.";
+            }
         }
 
-        function saveButton() {
+        async function saveButton() {
             const label = document.getElementById('btn-label').value.trim();
             const text = document.getElementById('btn-text').value.trim();
             const editId = document.getElementById('edit-id').value;
 
             if (!label || !text) return alert('Please fill in both fields!');
-
-            // Check if user is importing from another device
-            if (label === "IMPORT") {
-                try {
-                    const decoded = JSON.parse(decodeURIComponent(atob(text)));
-                    if (Array.isArray(decoded)) {
-                        buttons = decoded;
-                        resetForm();
-                        renderButtons();
-                        return;
-                    }
-                } catch(e) {
-                    return alert('Invalid transfer code!');
-                }
-            }
 
             if (editId === "") {
                 const exists = buttons.some(b => b.label.toLowerCase() === label.toLowerCase());
@@ -124,6 +124,7 @@
 
             resetForm();
             renderButtons();
+            await syncToCloud();
         }
 
         function startEdit(safeId) {
@@ -139,11 +140,12 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function deleteButton(safeId) {
+        async function deleteButton(safeId) {
             const targetLabel = decodeURIComponent(safeId);
             if (confirm(`Delete "${targetLabel}" permanently?`)) {
                 buttons = buttons.filter(b => b.label !== targetLabel);
                 renderButtons();
+                await syncToCloud();
             }
         }
 
@@ -171,7 +173,7 @@
             return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        renderButtons();
+        loadButtons();
     </script>
 </body>
 </html>
