@@ -44,7 +44,7 @@
     <div id="toast" class="toast">Copied!</div>
 
     <script>
-        // PASTE YOUR KVDB KEY STRING BETWEEN THE QUOTES BELOW
+        // PASTE YOUR EXTRACTED KVDB STRING DIRECTLY BETWEEN THE SINGLE QUOTES BELOW
         const BUCKET_ID = '99T6VHq4iXZwKvkBfQsWei';
         const API_URL = `https://kvdb.io{BUCKET_ID}/list.json`;
 
@@ -95,8 +95,10 @@
             document.getElementById('status').innerText = "⏳ Saving changes...";
             localStorage.setItem('copyButtonsBackup', JSON.stringify(buttons));
             try {
+                // Forcing plain text over a POST request drops all browser security blocks completely
                 await fetch(API_URL, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify(buttons)
                 });
                 document.getElementById('status').innerText = "☁️ Saved to cloud database!";
